@@ -64,10 +64,7 @@ wss.on("connection", (ws) => {
       playing = msg.playing;
       broadcast({ playing, sender: msg.sender, cells });
     }
-    if (msg.type === "setCells") {
-      cells = msg.cells;
-      broadcast({ cells, dimensions, sender: msg.sender });
-    }
+
     if (msg.type === "setCells") {
       if (Array.isArray(msg.cells)) {
         cells = msg.cells;
@@ -79,6 +76,7 @@ wss.on("connection", (ws) => {
         broadcast({ cells, dimensions, sender: msg.sender });
       }
     }
+
     if (msg.type === "setMousePosition") {
       if (typeof msg.sender === "string") {
         socketMouseId = msg.sender;
@@ -87,6 +85,7 @@ wss.on("connection", (ws) => {
 
       broadcast({ mousePositions, sender: msg.sender });
     }
+
     if (msg.type === "removeMousePosition" && typeof msg.sender === "string") {
       delete mousePositions[msg.sender];
       if (socketMouseId === msg.sender) {
