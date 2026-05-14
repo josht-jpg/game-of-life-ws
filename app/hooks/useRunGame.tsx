@@ -4,7 +4,7 @@ interface Props {
   cells: boolean[];
   dimensions: number;
   isPlaying: boolean;
-  sendCells: (cells: boolean[]) => void;
+  sendCells: (cells: boolean[], broadcast: boolean) => void;
   setCells: Dispatch<SetStateAction<boolean[]>>;
 }
 
@@ -32,7 +32,7 @@ export const useRunGame = ({
 
     const interval = setInterval(() => {
       const newCells = runGame(cellsRef.current, dimensionsRef.current);
-      sendCellsRef.current(newCells);
+      sendCellsRef.current(newCells, false);
       setCells(newCells);
     }, 125);
 

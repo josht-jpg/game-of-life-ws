@@ -153,7 +153,11 @@ export default function Home() {
     }
   }, [connectionId]);
 
-  const sendCells = (cells: boolean[], dimensions?: number) => {
+  const sendCells = (
+    cells: boolean[],
+    broadcast: boolean,
+    dimensions?: number,
+  ) => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(
@@ -161,6 +165,7 @@ export default function Home() {
           type: "setCells",
           cells,
           dimensions,
+          broadcast,
           sender: connectionId,
         }),
       );

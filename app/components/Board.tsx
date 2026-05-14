@@ -4,7 +4,7 @@ import { Dispatch, FC, SetStateAction, useEffect, useState } from "react";
 interface Props {
   cells: boolean[];
   setCells: Dispatch<SetStateAction<boolean[]>>;
-  sendCells: (cells: boolean[]) => void;
+  sendCells: (cells: boolean[], broadcast: boolean) => void;
   dimensions: number;
 }
 
@@ -61,7 +61,7 @@ export const Board: FC<Props> = ({
     });
 
     setCells(newBoard);
-    sendCells(newBoard);
+    sendCells(newBoard, true);
   };
 
   return (

@@ -13,7 +13,11 @@ interface Props {
   setDimensions: Dispatch<SetStateAction<number>>;
   cells: boolean[];
   setCells: Dispatch<SetStateAction<boolean[]>>;
-  sendCells: (cells: boolean[], dimensions?: number) => void;
+  sendCells: (
+    cells: boolean[],
+    broadcast: boolean,
+    dimensions?: number,
+  ) => void;
 }
 
 export const DimensionController: FC<Props> = ({
@@ -64,14 +68,14 @@ export const DimensionController: FC<Props> = ({
         ).fill(false);
         const newBoard = [...cells, ...paddingCells];
         setCells(newBoard);
-        sendCells(paddingCells, dimensions);
+        sendCells(paddingCells, true, dimensions);
         return;
       }
 
       if (cells.length > dimensions * dimensions) {
         const newCells = cells.slice(0, dimensions * dimensions);
         setCells(newCells);
-        sendCells(newCells, dimensions);
+        sendCells(newCells, true, dimensions);
       }
     };
 

@@ -11,7 +11,7 @@ type ServerMessage = { type: "state"; cells?: boolean[]; dimensions?: number; pl
 type ClientMessage =
   | { type: "toggle"; sender: string }
   | { type: "setPlaying"; playing: boolean, sender: string }
-  | { type: "setCells"; cells: boolean[], dimensions?: number, sender: string }
+  | { type: "setCells"; cells: boolean[], dimensions?: number, sender: string, broadcast: boolean }
   | { type: "setMousePosition"; mousePosition: MousePosition, sender: string }
   | { type: "removeMousePosition"; sender: string }
 
@@ -22,9 +22,6 @@ const mousePositions: Record<string, { x: number, y: number }> = {}
 
 const wss = new WebSocketServer({ port: PORT });
 
-console.log(wss.address())
-
-// TODO: don't need to send all
 function broadcast({ cells, dimensions, playing, mousePositions, sender }: { cells?: boolean[]; dimensions?: number; playing?: boolean, mousePositions?: MousePositions, sender?: string }) {
   const payload: ServerMessage = { type: "state", cells, dimensions, playing, mousePositions, sender };
   const msg = JSON.stringify(payload);
@@ -57,7 +54,7 @@ wss.on("connection", (ws) => {
 
     if (msg.type === "toggle") {
       playing = !playing;
-      broadcast({ playing, sender: msg.sender });
+      broadcast({ playing, sender: msg.sender, cells });
       return;
     }
     if (msg.type === "setPlaying" && typeof msg.playing === "boolean") {
@@ -65,7 +62,7 @@ wss.on("connection", (ws) => {
         return;
       }
       playing = msg.playing;
-      broadcast({ playing, sender: msg.sender });
+      broadcast({ playing, sender: msg.sender, cells });
     }
     if (msg.type === "setCells") {
       cells = msg.cells;
@@ -78,7 +75,9 @@ wss.on("connection", (ws) => {
       if (msg.dimensions && Number.isInteger(msg.dimensions)) {
         dimensions = msg.dimensions
       }
-      broadcast({ cells, dimensions, sender: msg.sender });
+      if (msg.broadcast) {
+        broadcast({ cells, dimensions, sender: msg.sender });
+      }
     }
     if (msg.type === "setMousePosition") {
       if (typeof msg.sender === "string") {
