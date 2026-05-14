@@ -238,7 +238,7 @@ export default function Home() {
           >
             <LoadingSpinner />
             <p className="text-sm font-medium text-zinc-400 dark:text-zinc-600">
-              Connecting to game server…
+              Connecting…
             </p>
           </div>
         )}
