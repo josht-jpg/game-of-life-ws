@@ -22,6 +22,8 @@ const mousePositions: Record<string, { x: number, y: number }> = {}
 
 const wss = new WebSocketServer({ port: PORT });
 
+console.log(wss.address())
+
 // TODO: don't need to send all
 function broadcast({ cells, dimensions, playing, mousePositions }: { cells?: boolean[]; dimensions?: number; playing?: boolean, mousePositions?: MousePositions }) {
   const payload: ServerMessage = { type: "state", cells, dimensions, playing, mousePositions };
