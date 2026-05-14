@@ -66,9 +66,9 @@ export const DimensionController: FC<Props> = ({
         const paddingCells = new Array(
           dimensions * dimensions - cells.length,
         ).fill(false);
-        const newBoard = [...cells, ...paddingCells];
-        setCells(newBoard);
-        sendCells(paddingCells, true, dimensions);
+        const newCells = [...cells, ...paddingCells];
+        setCells(newCells);
+        sendCells(newCells, true, dimensions);
         return;
       }
 
@@ -85,10 +85,12 @@ export const DimensionController: FC<Props> = ({
 
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("touchend", onMouseUp);
 
     return () => {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
+      document.addEventListener("touchend", onMouseUp);
     };
   }, [
     setIsDragging,
