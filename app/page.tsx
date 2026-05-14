@@ -89,8 +89,9 @@ export default function Home() {
           type?: string;
           playing?: boolean;
           cells: boolean[];
-          dimensions: number;
-          mousePositions: MousePositions;
+          dimensions?: number;
+          mousePositions?: MousePositions;
+          sender?: string;
         };
 
         if (data.type === "state") {
@@ -98,15 +99,20 @@ export default function Home() {
             setIsPlaying(data.playing);
           }
 
-          if (Array.isArray(data.cells)) {
+          if (Array.isArray(data.cells) && data.sender !== connectionId) {
+            console.log(connectionId);
+
             setCells(data.cells);
           }
 
-          if (Number.isInteger(data.dimensions)) {
-            setDimensions(data.dimensions);
+          if (
+            Number.isInteger(data.dimensions) &&
+            data.sender !== connectionId
+          ) {
+            setDimensions(data.dimensions as number);
           }
 
-          if (data.mousePositions) {
+          if (data.mousePositions && data.sender !== connectionId) {
             setMousePositions(new Map(Object.entries(data.mousePositions)));
           }
         }
@@ -143,14 +149,21 @@ export default function Home() {
   const sendToggle = useCallback(() => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "toggle" }));
+      ws.send(JSON.stringify({ type: "toggle", sender: connectionId }));
     }
-  }, []);
+  }, [connectionId]);
 
   const sendCells = (cells: boolean[], dimensions?: number) => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "setCells", cells, dimensions }));
+      ws.send(
+        JSON.stringify({
+          type: "setCells",
+          cells,
+          dimensions,
+          sender: connectionId,
+        }),
+      );
     }
   };
 
@@ -161,12 +174,12 @@ export default function Home() {
         JSON.stringify({
           type: "setMousePosition",
           mousePosition: {
-            id: connectionId,
             x,
             y,
             windowWidth: window.innerWidth,
             windowHeight: window.innerHeight,
           },
+          sender: connectionId,
         }),
       );
     }

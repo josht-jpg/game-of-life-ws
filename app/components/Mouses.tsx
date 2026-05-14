@@ -2,7 +2,7 @@ import { FC, useEffect } from "react";
 import { type MousePositions } from "../page";
 import { RemoteCursorIcon } from "./RemoteCursorIcon";
 
-const MOUSE_POSITION_DEBOUNCE_MS = 25;
+const MOUSE_POSITION_THROTTLE_MS = 25;
 
 interface Props {
   mousePositions: MousePositions;
@@ -16,24 +16,41 @@ export const Mouses: FC<Props> = ({
   mousePositions,
 }) => {
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let lastSentAt = 0;
+    let trailingTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastX = 0;
+    let lastY = 0;
+
+    const flush = () => {
+      trailingTimer = null;
+      lastSentAt = Date.now();
+      sendMousePosition(lastX, lastY);
+    };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
+      lastX = e.clientX;
+      lastY = e.clientY;
+      const now = Date.now();
+      const elapsedSinceSend = now - lastSentAt;
+      const waitMs = MOUSE_POSITION_THROTTLE_MS - elapsedSinceSend;
+
+      if (waitMs <= 0) {
+        if (trailingTimer !== null) {
+          clearTimeout(trailingTimer);
+          trailingTimer = null;
+        }
+        flush();
+      } else if (trailingTimer === null) {
+        trailingTimer = setTimeout(flush, waitMs);
       }
-      timeoutId = setTimeout(() => {
-        timeoutId = null;
-        sendMousePosition(e.clientX, e.clientY);
-      }, MOUSE_POSITION_DEBOUNCE_MS);
     };
 
     document.addEventListener("mousemove", onMouseMove);
 
     return () => {
       document.removeEventListener("mousemove", onMouseMove);
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
+      if (trailingTimer !== null) {
+        clearTimeout(trailingTimer);
       }
     };
   }, [sendMousePosition]);

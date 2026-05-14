@@ -34,7 +34,7 @@ export const useRunGame = ({
       const newCells = runGame(cellsRef.current, dimensionsRef.current);
       sendCellsRef.current(newCells);
       setCells(newCells);
-    }, 100);
+    }, 125);
 
     return () => {
       clearInterval(interval);
