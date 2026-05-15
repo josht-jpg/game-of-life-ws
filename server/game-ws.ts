@@ -1,29 +1,57 @@
 import { WebSocketServer, WebSocket } from "ws";
 
 const PORT = Number(process.env.WS_PORT ?? 3001);
+const DEFAULT_DIMENSIONS = 20;
 
+type MousePosition = {
+  x: number;
+  y: number;
+  windowWidth: number;
+  windowHeight: number;
+  // sender: string
+};
 
-type MousePosition = { x: number, y: number, windowWidth: number, windowHeight: number }
-type MousePositions = Record<string, { x: number, y: number }>
+type MousePositions = Record<string, { x: number; y: number }>;
 
-type ServerMessage = { type: "state"; cells?: boolean[]; dimensions?: number; playing?: boolean, mousePositions?: MousePositions, sender?: string };
+type ServerMessage = {
+  type: "state";
+  cells?: boolean[];
+  dimensions?: number;
+  playing?: boolean;
+  mousePositions?: MousePositions;
+  sender?: string;
+  // id: string
+};
 
 type ClientMessage =
   | { type: "toggle"; sender: string }
-  | { type: "setPlaying"; playing: boolean, sender: string }
-  | { type: "setCells"; cells: boolean[], dimensions?: number, sender: string, broadcast: boolean }
-  | { type: "setMousePosition"; mousePosition: MousePosition, sender: string }
-  | { type: "removeMousePosition"; sender: string }
+  | { type: "setPlaying"; playing: boolean; sender: string }
+  | { type: "setCells"; cells: boolean[]; dimensions?: number; sender: string; broadcast: boolean }
+  | { type: "setMousePosition"; mousePosition: MousePosition; sender: string }
+  | { type: "removeMousePosition"; sender: string };
 
-let cells = new Array(20 * 20).fill(false)
-let dimensions = 20;
+function normalizedMousePosition(p: MousePosition): { x: number; y: number } {
+  return {
+    x: (100 * p.x) / p.windowWidth,
+    y: (100 * p.y) / p.windowHeight,
+  };
+}
+
+let cells = new Array(DEFAULT_DIMENSIONS * DEFAULT_DIMENSIONS).fill(false);
+let dimensions = DEFAULT_DIMENSIONS;
 let playing = false;
-const mousePositions: Record<string, { x: number, y: number }> = {}
+const mousePositions: MousePositions = {};
 
 const wss = new WebSocketServer({ port: PORT });
 
-function broadcast({ cells, dimensions, playing, mousePositions, sender }: { cells?: boolean[]; dimensions?: number; playing?: boolean, mousePositions?: MousePositions, sender?: string }) {
-  const payload: ServerMessage = { type: "state", cells, dimensions, playing, mousePositions, sender };
+function broadcast(args: {
+  cells?: boolean[];
+  dimensions?: number;
+  playing?: boolean;
+  mousePositions?: MousePositions;
+  sender?: string;
+}) {
+  const payload: ServerMessage = { type: "state", ...args };
   const msg = JSON.stringify(payload);
   for (const client of wss.clients) {
     if (client.readyState === WebSocket.OPEN) {
@@ -35,8 +63,7 @@ function broadcast({ cells, dimensions, playing, mousePositions, sender }: { cel
 wss.on("connection", (ws) => {
   let socketMouseId: string | undefined;
 
-  const initial: ServerMessage = { type: "state", playing, cells, dimensions, mousePositions };
-  ws.send(JSON.stringify(initial));
+  ws.send(JSON.stringify({ type: "state", playing, cells, dimensions, mousePositions } satisfies ServerMessage));
 
   ws.on("message", (raw) => {
     let parsed: unknown;
@@ -52,56 +79,70 @@ wss.on("connection", (ws) => {
 
     const msg = parsed as ClientMessage;
 
-    if (msg.type === "toggle") {
-      playing = !playing;
-      broadcast({ playing, sender: msg.sender, cells });
-      return;
-    }
-    if (msg.type === "setPlaying" && typeof msg.playing === "boolean") {
-      if (playing === msg.playing) {
+    switch (msg.type) {
+      case "toggle":
+        playing = !playing;
+        broadcast({ playing, sender: msg.sender, cells });
+        return;
+
+      case "setPlaying": {
+        if (typeof msg.playing !== "boolean" || playing === msg.playing) {
+          return;
+        }
+        playing = msg.playing;
+        broadcast({ playing, sender: msg.sender, cells });
         return;
       }
-      playing = msg.playing;
-      broadcast({ playing, sender: msg.sender, cells });
-    }
 
-    if (msg.type === "setCells") {
-      if (Array.isArray(msg.cells)) {
-        cells = msg.cells;
-      }
-      if (msg.dimensions && Number.isInteger(msg.dimensions)) {
-        dimensions = msg.dimensions
-      }
-      if (msg.broadcast) {
-        broadcast({ cells, dimensions, sender: msg.sender });
-      }
-    }
+      case "setCells": {
+        if (Array.isArray(msg.cells)) {
+          cells = msg.cells;
+        }
 
-    if (msg.type === "setMousePosition") {
-      if (typeof msg.sender === "string") {
+        if (msg.dimensions && Number.isInteger(msg.dimensions)) {
+          dimensions = msg.dimensions;
+        }
+        if (msg.broadcast) {
+          broadcast({ cells, dimensions, sender: msg.sender });
+        }
+        return;
+      }
+
+      case "setMousePosition": {
+        if (typeof msg.sender !== "string") {
+          return;
+        }
         socketMouseId = msg.sender;
-        mousePositions[msg.sender] = { x: 100 * msg.mousePosition.x / msg.mousePosition.windowWidth, y: 100 * msg.mousePosition.y / msg.mousePosition.windowHeight }
+        mousePositions[msg.sender] = normalizedMousePosition(msg.mousePosition);
+        broadcast({ mousePositions, sender: msg.sender });
+        return;
       }
 
-      broadcast({ mousePositions, sender: msg.sender });
-    }
-
-    if (msg.type === "removeMousePosition" && typeof msg.sender === "string") {
-      delete mousePositions[msg.sender];
-      if (socketMouseId === msg.sender) {
-        socketMouseId = undefined;
+      case "removeMousePosition": {
+        if (typeof msg.sender !== "string") {
+          return;
+        }
+        // TODO: double check I'm not being dumb here
+        delete mousePositions[msg.sender];
+        if (socketMouseId === msg.sender) {
+          socketMouseId = undefined;
+        }
+        broadcast({ mousePositions, sender: msg.sender });
+        return;
       }
-      broadcast({ mousePositions, sender: msg.sender });
-    }
 
+      default:
+        return;
+    }
   });
 
   ws.on("close", () => {
-    if (socketMouseId) {
-      delete mousePositions[socketMouseId];
-      socketMouseId = undefined;
-      broadcast({ cells, dimensions, playing, mousePositions, });
+    if (!socketMouseId) {
+      return;
     }
+    delete mousePositions[socketMouseId];
+    socketMouseId = undefined;
+    broadcast({ cells, dimensions, playing, mousePositions });
   });
 });
 
