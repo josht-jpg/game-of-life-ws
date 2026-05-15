@@ -194,7 +194,7 @@ export default function Home() {
   useRunGame({ cells, dimensions, isPlaying, setCells, sendCells });
 
   return (
-    <div className="dark:bg-zinc-50 dark:text-black bg-black overflow-hidden relative">
+    <div className="bg-zinc-50 dark:text-black overflow-hidden relative">
       <Mouses
         connectionId={connectionId}
         sendMousePosition={sendMousePosition}
